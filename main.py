@@ -9,6 +9,8 @@ from fastapi_limiter import FastAPILimiter
 import redis.asyncio as redis
 from src.routers.users import router as users_router
 from fastapi.openapi.utils import get_openapi
+from src.routers import auth
+
 
 models.Base.metadata.create_all(bind=engine, checkfirst=True)
 
@@ -16,6 +18,8 @@ app = FastAPI(title="Contacts API HW10")
 app.include_router(auth_router)
 app.include_router(users_router, prefix="/users", tags=["users"])
 app.include_router(contacts_router, prefix="/contacts", tags=["contacts"])
+app.include_router(auth.router)
+
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -53,7 +57,7 @@ def get_health_status(db=Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=503, detail="Database is not available")
     
-    from fastapi.openapi.utils import get_openapi
+   
 
 def custom_openapi():
     if app.openapi_schema:
