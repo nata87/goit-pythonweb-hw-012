@@ -22,6 +22,12 @@ cloudinary.config(
 
 @router.get("/me", response_model=UserResponse, dependencies=[Depends(RateLimiter(times=5, seconds=60))])
 def get_me(current_user: User = Depends(get_current_user)):
+    """
+    Get the current authenticated user's profile.
+
+    :param current_user: Authenticated user from JWT token
+    :return: User profile data
+    """
     return current_user
 
 
@@ -34,6 +40,15 @@ def upload_avatar(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    """
+    Upload and set a new avatar for the current user via Cloudinary.
+
+    :param file: Uploaded image file
+    :param current_user: Authenticated user
+    :param db: Database session
+    :return: Dictionary with the avatar URL
+    :raises HTTPException: If upload fails
+    """
     try:
         result = cloudinary.uploader.upload(file.file, folder="avatars")
         url = result.get("secure_url")

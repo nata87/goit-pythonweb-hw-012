@@ -16,6 +16,14 @@ router = APIRouter(tags=["auth"])
 
 @router.post("/signup", response_model=UserResponse, status_code=201)
 async def signup(user: UserCreate, db: Session = Depends(get_db)):
+    """
+    Register a new user and send email verification.
+
+    :param user: User data for registration
+    :param db: Database session
+    :return: Newly created user object
+    :raises HTTPException: If email is already registered
+    """
     existing_user = db.query(User).filter(User.email == user.email).first()
     if existing_user:
         raise HTTPException(status_code=409, detail="Email already registered")
@@ -32,12 +40,20 @@ async def signup(user: UserCreate, db: Session = Depends(get_db)):
     await send_verification_email(new_user.email, token)
 
     return new_user
-
+    
 
 @router.post("/login")
 def login(
     form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)
 ):
+    """
+    Authenticate user and return JWT access token.
+
+    :param form_data: OAuth2 credentials (username and password)
+    :param db: Database session
+    :return: Access token and token type
+    :raises HTTPException: If credentials are invalid
+    """
     db_user = db.query(User).filter(User.email == form_data.username).first()
     if not db_user or not verify_password(form_data.password, db_user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
@@ -50,6 +66,14 @@ def login(
 
 @router.get("/verify/{token}")
 async def verify_email(token: str, db: Session = Depends(get_db)):
+    """
+    Verify user's email using the provided token.
+
+    :param token: Email verification token
+    :param db: Database session
+    :return: Confirmation message
+    :raises HTTPException: If token is invalid or user not found
+    """
     email = verify_email_token(token)
     if email is None:
         raise HTTPException(
