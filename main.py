@@ -32,6 +32,7 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def startup():
+  
     r = await redis.from_url(
         f"redis://{settings.REDIS_HOST}:{settings.REDIS_PORT}",
         encoding="utf-8",
@@ -39,6 +40,8 @@ async def startup():
     )
     await FastAPILimiter.init(r)
 
+
+    models.Base.metadata.create_all(bind=engine)
 
 @app.get("/", name="API root")
 def get_index():

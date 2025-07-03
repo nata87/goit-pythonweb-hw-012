@@ -1,16 +1,22 @@
+version: "3.9"
+
 services:
-  db:
+  contacts-postgres:
     image: postgres:15
     container_name: contacts-postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_DB:  ${POSTGRES_DB}
     ports:
       - "5432:5432"
-    command: ["postgres", "-c", "log_statement=all"]
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7
@@ -20,18 +26,20 @@ services:
 
   pgadmin:
     image: dpage/pgadmin4
+    container_name: goit-pythonweb-hw-012-pgadmin-1
     restart: always
     environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin
     ports:
       - "5050:80"
     depends_on:
-      - db
-
+      contacts-postgres:
+        condition: service_healthy
 
   web:
     build: .
+    container_name: goit-pythonweb-hw-012-web-1
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
     volumes:
       - .:/app
@@ -53,7 +61,7 @@ services:
       - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY}
       - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET}
     depends_on:
-      - db
+      - contacts-postgres
 
 volumes:
   postgres_data:
