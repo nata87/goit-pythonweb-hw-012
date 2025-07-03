@@ -9,6 +9,8 @@ from src.settings.config import settings, get_db
 from src.auth.dependencies import get_current_user
 from src.database.models import User
 from src.schemas.user import UserResponse
+from src.services.roles import RoleAccess
+from src.database.models import Role, User as UserORM
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -16,11 +18,15 @@ router = APIRouter(prefix="/users", tags=["users"])
 cloudinary.config(
     cloud_name=settings.CLOUDINARY_NAME,
     api_key=settings.CLOUDINARY_API_KEY,
-    api_secret=settings.CLOUDINARY_API_SECRET
+    api_secret=settings.CLOUDINARY_API_SECRET,
 )
 
 
-@router.get("/me", response_model=UserResponse, dependencies=[Depends(RateLimiter(times=5, seconds=60))])
+@router.get(
+    "/me",
+    response_model=UserResponse,
+    dependencies=[Depends(RateLimiter(times=5, seconds=60))],
+)
 def get_me(current_user: User = Depends(get_current_user)):
     """
     Get the current authenticated user's profile.
@@ -34,11 +40,18 @@ def get_me(current_user: User = Depends(get_current_user)):
 from fastapi import UploadFile, File, HTTPException
 import cloudinary.uploader
 
-@router.patch("/avatar")
+allowed_operation_update_avatar = RoleAccess([Role.admin])
+
+
+@router.patch(
+    "/avatar",
+    response_model=UserResponse,
+    dependencies=[Depends(allowed_operation_update_avatar)],
+)
 def upload_avatar(
     file: UploadFile = File(...),
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    current_user: UserORM = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
     """
     Upload and set a new avatar for the current user via Cloudinary.
@@ -54,14 +67,15 @@ def upload_avatar(
         url = result.get("secure_url")
 
         if not url:
-            raise HTTPException(status_code=500, detail="Failed to upload avatar to Cloudinary")
+            raise HTTPException(
+                status_code=500, detail="Failed to upload avatar to Cloudinary"
+            )
 
         current_user.avatar_url = url
         db.commit()
         db.refresh(current_user)
 
-        return {"avatar_url": url}
+        return current_user
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Avatar upload error: {str(e)}")
-
